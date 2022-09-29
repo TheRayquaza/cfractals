@@ -3,7 +3,9 @@
 #include <time.h>
 #include <SDL2/SDL.h>
 
-#define TOP_LEVEL 13
+#define MIN(a, b) ( ( (a) < (b) ) ? (a) : (b) )
+
+#define TOP_LEVEL 12
 
 // Recursive function that draws the fractal canopy.
 //
@@ -15,16 +17,16 @@
 // level: Recursion level (0 = first iteration).
 void v(SDL_Renderer* renderer, int x, int y, int z, int t, int level)
 {
-    // Trace
+    // Trace the mountain
     if (level == 0)
         SDL_RenderDrawLine(renderer, x, y, z, t);
     // Divide the current segment into 2 parts.
     else
     {
-        int m = (x+z)/2 + (t-y)/2;
-        int u = (y+t)/2 - (z-x)/2;
-        v(renderer, x, y, m, u, level-1);
-        v(renderer, z, t, m, u, level-1);
+        int h = (y+t)/2 + rand()%(abs(z-x)/5+20);
+        int m = (x+z)/2;
+        v(renderer, x, y, m, h, level-1);
+        v(renderer, m, h, z, t, level-1);
     }
 }
 
@@ -108,7 +110,7 @@ int main(int argc, char * argv[])
         errx(EXIT_FAILURE, "%s", SDL_GetError());
 
     // Creates a window.
-    SDL_Window* window = SDL_CreateWindow("Dynamic Dragon", 0, 0, 500, 500,
+    SDL_Window* window = SDL_CreateWindow("Dynamic Mountain", 0, 0, 500, 500,
             SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (window == NULL)
         errx(EXIT_FAILURE, "%s", SDL_GetError());
@@ -122,7 +124,7 @@ int main(int argc, char * argv[])
     if (argc == 2)
         event_loop(renderer, atoi(argv[1]));
     else
-        event_loop(renderer, 12);
+        event_loop(renderer, 8);
 
     // Destroys the objects.
     SDL_DestroyRenderer(renderer);

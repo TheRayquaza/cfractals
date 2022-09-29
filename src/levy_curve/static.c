@@ -3,7 +3,7 @@
 #include <time.h>
 #include <SDL2/SDL.h>
 
-#define TOP_LEVEL 13
+#define TOP_LEVEL 16
 
 // Recursive function that draws the fractal canopy.
 //
@@ -24,7 +24,7 @@ void v(SDL_Renderer* renderer, int x, int y, int z, int t, int level)
         int m = (x+z)/2 + (t-y)/2;
         int u = (y+t)/2 - (z-x)/2;
         v(renderer, x, y, m, u, level-1);
-        v(renderer, z, t, m, u, level-1);
+        v(renderer, m, u, z, t, level-1);
     }
 }
 
@@ -47,8 +47,8 @@ void draw(SDL_Renderer* renderer, int w, int h, int level)
     // Sets the color for drawing operations to white.
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 
-    // Draws the fractal canopy. 
-    v(renderer, w / 4, h/2, 3*w/4, h/2, level > TOP_LEVEL ? TOP_LEVEL : level);
+    // Draws the fractal
+    v(renderer, w / 4, 2*h/3, 3*w/4, 2*h/3, level > TOP_LEVEL ? TOP_LEVEL : level);
 
     // Updates the display.
     SDL_RenderPresent(renderer);
@@ -60,9 +60,8 @@ void draw(SDL_Renderer* renderer, int w, int h, int level)
 void event_loop(SDL_Renderer* renderer, int level)
 {
     // Width and height of the window.
-    int w = 500;
-    int h = 500;
-    double ratio;
+    int w = 800;
+    int h = 900;
 
     // Draws the fractal canopy (first draw).
     draw(renderer, w, h, level);
@@ -90,10 +89,6 @@ void event_loop(SDL_Renderer* renderer, int level)
                     draw(renderer, w, h, level);
                 }
                 break;
-            case SDL_MOUSEMOTION:
-                ratio = ((double) event.motion.x / (double) w) * (double) TOP_LEVEL;
-                draw(renderer, w, h, (int) ratio);
-                break;
         }
     }
 }
@@ -108,7 +103,7 @@ int main(int argc, char * argv[])
         errx(EXIT_FAILURE, "%s", SDL_GetError());
 
     // Creates a window.
-    SDL_Window* window = SDL_CreateWindow("Dynamic Dragon", 0, 0, 500, 500,
+    SDL_Window* window = SDL_CreateWindow("Static Dragon", 0, 0, 500, 500,
             SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (window == NULL)
         errx(EXIT_FAILURE, "%s", SDL_GetError());
@@ -122,7 +117,7 @@ int main(int argc, char * argv[])
     if (argc == 2)
         event_loop(renderer, atoi(argv[1]));
     else
-        event_loop(renderer, 12);
+        event_loop(renderer, 10);
 
     // Destroys the objects.
     SDL_DestroyRenderer(renderer);

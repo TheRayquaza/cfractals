@@ -24,7 +24,7 @@ void v(SDL_Renderer* renderer, int x, int y, int z, int t, int level)
         int m = (x+z)/2 + (t-y)/2;
         int u = (y+t)/2 - (z-x)/2;
         v(renderer, x, y, m, u, level-1);
-        v(renderer, m, u, z, t, level-1);
+        v(renderer, z, t, m, u, level-1);
     }
 }
 
