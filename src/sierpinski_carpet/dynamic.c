@@ -3,30 +3,58 @@
 #include <time.h>
 #include <SDL2/SDL.h>
 
-#define MIN(a, b) ( ( (a) < (b) ) ? (a) : (b) )
+int LIMIT;
 
-#define TOP_LEVEL 12
+// Initialize a rect
+SDL_Rect * init_rect(int x, int y, int w, int h)
+{
+    SDL_Rect * rect = calloc(1, sizeof(SDL_Rect));
+    if (!rect)
+        errx(EXIT_FAILURE, "Unable to generate a rectangle");
+
+    rect->x = x;
+    rect->y = y;
+    rect->w = w;
+    rect->h = h;
+
+    return rect;
+}
 
 // Recursive function that draws the fractal canopy.
 //
 // renderer: Renderer to draw on.
 // x: Abscissa of the starting point of the segments.
 // y: Ordinate of the starting point of the segments.
-// len: Length of the segments.
-// a: Angle use to rotate the segments.
-// level: Recursion level (0 = first iteration).
-void v(SDL_Renderer* renderer, int x, int y, int z, int t, int level)
+// n: the size of the current square
+// black: whether the color of the square should be black
+void v(SDL_Surface * surface, int x, int y, int n, int black)
 {
     // Trace the mountain
-    if (level == 0)
-        SDL_RenderDrawLine(renderer, x, y, z, t);
+    if (n <= LIMIT)
+    {
+        SDL_Rect * rect = init_rect(x,y,n,n);
+        if (black)
+            SDL_FillRect(surface, rect, SDL_MapRGB(surface->format, 0,0, 0));
+        else
+            SDL_FillRect(surface, rect, SDL_MapRGB(surface->format, 255, 255, 255));
+        free(rect);
+    }
     // Divide the current segment into 2 parts.
     else
     {
-        int h = (y+t)/2 + rand()%(abs(z-x)/5+20);
-        int m = (x+z)/2;
-        v(renderer, x, y, m, h, level-1);
-        v(renderer, m, h, z, t, level-1);
+        n /= 3;
+                
+        v(surface, x, y, n, 1);
+        v(surface, x+n, y, n, 1);
+        v(surface, x+2*n, y, n, 1);
+
+        v(surface, x, y+n, n, 1);
+        v(surface, x+n, y+n, n,  0);
+        v(surface, x+2*n, y+n, n, 1);
+
+        v(surface, x, y+2*n, n, 1);
+        v(surface, x+n, y+2*n, n, 1);
+        v(surface, x+2*n, y+2*n, n, 1);
     }
 }
 
@@ -35,9 +63,8 @@ void v(SDL_Renderer* renderer, int x, int y, int z, int t, int level)
 // renderer: Renderer to draw on.
 // w: Current width of the window.
 // h: Current height of the window.
-void draw(SDL_Renderer* renderer, int w, int h, int level)
+void draw(SDL_Renderer* renderer, SDL_Surface * surface, int w, int h)
 {
-
     // If the width or the height is too small, we do not draw anything.
     if (w < 20 || h < 20)
         return;
@@ -50,7 +77,15 @@ void draw(SDL_Renderer* renderer, int w, int h, int level)
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 
     // Draws the fractal canopy. 
-    v(renderer, w / 4, h/2, 3*w/4, h/2, level > TOP_LEVEL ? TOP_LEVEL : level);
+    v(surface, w/4, h/4, w/2, 0);
+
+    // Create a Texture to apply on the render
+    SDL_Texture * texture = SDL_CreateTextureFromSurface(renderer, surface);
+
+    // Applying texture
+    SDL_Rect * rect = init_rect(0,0,w,h);
+    SDL_RenderCopy(renderer, texture, NULL, rect); 
+    free(rect);
 
     // Updates the display.
     SDL_RenderPresent(renderer);
@@ -59,15 +94,18 @@ void draw(SDL_Renderer* renderer, int w, int h, int level)
 // Event loop that calls the relevant event handler.
 //
 // renderer: Renderer to draw on.
-void event_loop(SDL_Renderer* renderer, int level)
+void event_loop(SDL_Renderer* renderer)
 {
     // Width and height of the window.
     int w = 500;
     int h = 500;
-    double ratio;
+
+    SDL_Surface * surface = SDL_CreateRGBSurface(0, w, h, 32, 0, 0, 0, 0);
+    if (!surface)
+        errx(EXIT_FAILURE, "%s", SDL_GetError());
 
     // Draws the fractal canopy (first draw).
-    draw(renderer, w, h, level);
+    draw(renderer, surface, w, h);
 
     // Creates a variable to get the events.
     SDL_Event event;
@@ -89,12 +127,14 @@ void event_loop(SDL_Renderer* renderer, int level)
                 {
                     w = event.window.data1;
                     h = event.window.data2;
-                    draw(renderer, w, h, level);
+                    SDL_FreeSurface(surface);
+                    surface = SDL_CreateRGBSurface(0, w, h, 32, 0, 0, 0, 0);
+                    draw(renderer, surface, w, h);
                 }
                 break;
             case SDL_MOUSEMOTION:
-                ratio = ((double) event.motion.x / (double) w) * (double) TOP_LEVEL;
-                draw(renderer, w, h, (int) ratio);
+                LIMIT = (int) (((double) event.motion.x / (double) w) * (double) w/4);
+                draw(renderer, surface, w, h);
                 break;
         }
     }
@@ -110,7 +150,7 @@ int main(int argc, char * argv[])
         errx(EXIT_FAILURE, "%s", SDL_GetError());
 
     // Creates a window.
-    SDL_Window* window = SDL_CreateWindow("Dynamic Mountain", 0, 0, 500, 500,
+    SDL_Window* window = SDL_CreateWindow("Dynamic Sierpinski", 0, 0, 500, 500,
             SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (window == NULL)
         errx(EXIT_FAILURE, "%s", SDL_GetError());
@@ -122,9 +162,10 @@ int main(int argc, char * argv[])
 
     // Dispatches the events.
     if (argc == 2)
-        event_loop(renderer, atoi(argv[1]));
+        LIMIT = (atoi(argv[1]) < 2) ? 0 : atoi(argv[1]);
     else
-        event_loop(renderer, 8);
+        LIMIT = 2;
+    event_loop(renderer);
 
     // Destroys the objects.
     SDL_DestroyRenderer(renderer);

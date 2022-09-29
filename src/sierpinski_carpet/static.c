@@ -5,6 +5,8 @@
 
 #define TOP_LEVEL 12
 
+int LIMIT;
+
 // Initialize a rect
 SDL_Rect * init_rect(int x, int y, int w, int h)
 {
@@ -28,28 +30,34 @@ SDL_Rect * init_rect(int x, int y, int w, int h)
 // w: width of the carpet
 // h: height of the carpet
 // level: Recursion level (0 = last iteration).
-void v(SDL_Surface * surface, int x, int y, int w, int h, int level)
+void v(SDL_Surface * surface, int x, int y, int n, int black)
 {
     // Trace
-    if (level == 0 || w <= 3 || h <= 3)
+    if (n <= LIMIT)
     {
-        SDL_Rect * rect = init_rect(x,y,w,h);
-        SDL_FillRect(surface, rect, SDL_MapRGB(surface->format, 255, 255, 255)),
+        SDL_Rect * rect = init_rect(x,y,n,n);
+        if (black)
+            SDL_FillRect(surface, rect, SDL_MapRGB(surface->format, 0,0, 0));
+        else
+            SDL_FillRect(surface, rect, SDL_MapRGB(surface->format, 255, 255, 255));
         free(rect);
     }
     // Divide the current segment into 2 parts.
     else
     {
-        v(surface, x/3, y/3, w/3, h/3, level-1);
-        v(surface, 2*x/3, y/3, w/3, h/3, level-1);
-        v(surface, x, y/3, w/3, h/3, level-1);
+        n /= 3;
+                
+        v(surface, x, y, n, 1);
+        v(surface, x+n, y, n, 1);
+        v(surface, x+2*n, y, n, 1);
 
-        v(surface, x/3, 2*y/3, w/3, h/3, level-1);
-        v(surface, 2*x/3, 2*y/3, w/3, h/3, level-1);
-        v(surface, x, 2*y/3, w/3, h/3, level-1);
+        v(surface, x, y+n, n, 1);
+        v(surface, x+n, y+n, n,  0);
+        v(surface, x+2*n, y+n, n, 1);
 
-        v(surface, x/3, y, w/3, h/3, level-1);
-        v(surface, 2*x/3, y, w/3, h/3, level-1);
+        v(surface, x, y+2*n, n, 1);
+        v(surface, x+n, y+2*n, n, 1);
+        v(surface, x+2*n, y+2*n, n, 1);
     }
 }
 
@@ -59,7 +67,7 @@ void v(SDL_Surface * surface, int x, int y, int w, int h, int level)
 // surface : the surface to draw on.
 // w: Current width of the window.
 // h: Current height of the window.
-void draw(SDL_Renderer* renderer, SDL_Surface * surface, int w, int h, int level)
+void draw(SDL_Renderer* renderer, SDL_Surface * surface, int w, int h)
 {
     // If the width or the height is too small, we do not draw anything.
     if (w < 20 || h < 20)
@@ -73,7 +81,7 @@ void draw(SDL_Renderer* renderer, SDL_Surface * surface, int w, int h, int level
     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 
     // Draws the fractal canopy. 
-    v(surface, w / 4, h/2, 3*w/4, h/2, level > TOP_LEVEL ? TOP_LEVEL : level);
+    v(surface, w/4, h/4, w/2, 0);
 
     // Create a Texture to apply on the render
     SDL_Texture * texture = SDL_CreateTextureFromSurface(renderer, surface);
@@ -90,7 +98,7 @@ void draw(SDL_Renderer* renderer, SDL_Surface * surface, int w, int h, int level
 // Event loop that calls the relevant event handler.
 //
 // renderer: Renderer to draw on.
-void event_loop(SDL_Renderer* renderer, int level)
+void event_loop(SDL_Renderer* renderer)
 {
     // Width and height of the window.
     int w = 500;
@@ -101,7 +109,7 @@ void event_loop(SDL_Renderer* renderer, int level)
         errx(EXIT_FAILURE, "%s", SDL_GetError());
 
     // Draws the fractal canopy (first draw).
-    draw(renderer, surface, w, h, level);
+    draw(renderer, surface, w, h);
 
     // Creates a variable to get the events.
     SDL_Event event;
@@ -125,7 +133,7 @@ void event_loop(SDL_Renderer* renderer, int level)
                     h = event.window.data2;
                     SDL_FreeSurface(surface);
                     surface = SDL_CreateRGBSurface(0, w, h, 32, 0, 0, 0, 0);
-                    draw(renderer, surface, w, h, level);
+                    draw(renderer, surface, w, h);
                 }
                 break;
         }
@@ -143,7 +151,7 @@ int main(int argc, char * argv[])
         errx(EXIT_FAILURE, "%s", SDL_GetError());
 
     // Creates a window.
-    SDL_Window* window = SDL_CreateWindow("Static Mountain", 0, 0, 500, 500,
+    SDL_Window* window = SDL_CreateWindow("Static Sierpinski", 0, 0, 500, 500,
             SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (window == NULL)
         errx(EXIT_FAILURE, "%s", SDL_GetError());
@@ -155,9 +163,10 @@ int main(int argc, char * argv[])
 
     // Dispatches the events.
     if (argc == 2)
-        event_loop(renderer, atoi(argv[1]));
+        LIMIT = (atoi(argv[1]) < 2) ? 0 : atoi(argv[1]);
     else
-        event_loop(renderer, 10);
+        LIMIT = 2;
+    event_loop(renderer);
 
     // Destroys the objects.
     SDL_DestroyRenderer(renderer);
