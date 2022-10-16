@@ -14,3 +14,6 @@
 
 ## Sierpinski Carpet
 ![Sierpinski Carpet](https://github.com/TheRayquaza95/cfractals/blob/master/img/sierpiniski_carpet.png)
+
+## Mandelbrot
+![Mandelbrot](https://github.com/TheRayquaza95/cfractals/blob/master/img/mandelbrot.png)
